@@ -1,3 +1,8 @@
+import ctypes
+
+kernel32 = ctypes.windll.kernel32
+kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+
 silent = 0
 only_result = 1
 show_all = 2
@@ -36,8 +41,9 @@ class frm:
 
 class Graph:
 
-    def __init__(self, vertexes):
+    def __init__(self, vertexes, name="Graph"):
         self.V = vertexes
+        self.name = name
         self.maxSizeStr = 5
         self.graph = []
 
@@ -47,16 +53,32 @@ class Graph:
     def get_cnt_edges(self):
         return len(self.graph)
 
+    def get_graph_name(self):
+        return self.name
+
+    def set_graph_name(self, newname):
+        self.name = newname
+
+    def clear_graph(self):
+        if input("Are you sure (Y/N): ") == "Y":
+            self.V = 0
+            self.graph = []
+            print(f"Cleared")
+            
+
     def addEdge(self, u, v, w):
         self.graph.append([u - 1, v - 1, w])
         if len(str(w)) > self.maxSizeStr:
             self.maxSizeStr = len(str(w))
 
-    def alg_BellmanFord(self, source, mode):
+    def alg_BellmanFord(self, source=1, mode=only_result):
+        if self.V <= 0:
+            return 1
+        source -= 1
         dist = [float("Inf")] * self.V
         dist[source] = 0
         if mode > 0:
-            self.print_table_title(f"Bellman Ford ({source})")
+            self.print_table_title(f"Bellman Ford ({source+1}) ({self.name})")
             self.print_table_header()
         for i in range(self.V - 1):
             for u, v, w in self.graph:
@@ -64,6 +86,10 @@ class Graph:
                     dist[v] = dist[u] + w
                     if mode > 1:
                         self.print_paths_from_vertex(dist)
+                if dist[source] != 0:
+                    if mode > 0:
+                        self.print_table_title("Graph contain negative cycle\n")
+                    return 0
         for u, v, w in self.graph:
             if dist[u] != float("Inf") and dist[u] + w < dist[v]:
                 if mode > 0:
@@ -74,7 +100,9 @@ class Graph:
             print()
         return 1
 
-    def alg_Matrix_multiplication(self, mode):
+    def alg_Matrix_multiplication(self, mode=only_result):
+        if self.V <= 0:
+            return
         matrix = []
         for i in range(self.V):
             matrix.append([float("Inf")] * self.V)
@@ -83,10 +111,12 @@ class Graph:
             matrix[u][v] = w
 
         if mode > 0:
-            self.print_table_title("Matrix Multi", rightColumn=True)
+            self.print_table_title(f"Matrix Multi ({self.name})", rightColumn=True)
             if self.check_neg_cycle("", 0):
                 allMatrixFlag = 1
+                current_degree = 0
                 for iterations in range(self.V - 1):
+                    current_degree = 2**iterations
                     saveMatrix = [[]] * self.V
                     for i in range(self.V):
                         saveMatrix[i] = matrix[i].copy()
@@ -101,9 +131,9 @@ class Graph:
                             allMatrixFlag = 0
                         break
                     if mode > 1:
-                        self.print_matrix(matrix, 2 ** iterations)
+                        self.print_matrix(matrix, current_degree)
                 if allMatrixFlag and mode > 0:
-                    self.print_matrix(matrix, 2 ** (self.V - 1))
+                    self.print_matrix(matrix, current_degree)
 
     def print_matrix(self, matrix, degree):
         self.print_table_title(f"Degree({degree})", rightColumn=True)
@@ -115,7 +145,7 @@ class Graph:
         print()
 
     def print_table_title(self, title, rightColumn=False):
-        print(end=frm.BOLD)
+        print(end=frm.BOLD + frm.GREEN)
         stringSize = self.maxSizeStr * self.V + self.V - 1
         if rightColumn:
             stringSize += self.V
@@ -159,7 +189,7 @@ class Graph:
 
     def check_neg_cycle(self, title="Negative cycle check", mode=1):
         if title != "":
-            self.print_table_title(title)
+            self.print_table_title(f"{title} ({self.name})")
         if not self.alg_BellmanFord(0, silent):
             self.print_table_title("Graph contain negative cycle\n")
             return False
@@ -192,5 +222,13 @@ if __name__ == '__main__':
     # g.addEdge(5, 4, 1)
 
     g.check_neg_cycle()
-    g.alg_BellmanFord(0, show_all)
-    g.alg_Matrix_multiplication(show_all)
+    g.alg_BellmanFord(source=1, mode=show_all)
+    g.alg_Matrix_multiplication(mode=show_all)
+
+    negG = Graph(2, name="Negative graph")
+    negG.addEdge(1,2,-1)
+    negG.addEdge(2,1,-1)
+
+    negG.check_neg_cycle()
+    negG.alg_BellmanFord(1, mode=show_all)
+    negG.alg_Matrix_multiplication(mode=only_result)
